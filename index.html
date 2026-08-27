@@ -1,1 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>實驗室採購核銷平台</title>
+    <style>
+        :root { --ink: #172522; --muted: #71817d; --line: #dce6e2; --paper: #fbfcfa; --mint: #dcefe5; --green: #176b4d; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: var(--ink); background: #eef4f0; font-family: Georgia, "Noto Serif TC", serif; }
+        button, input, textarea { font: inherit; }
+        button { cursor: pointer; }
+        .shell { max-width: 1120px; margin: 0 auto; padding: 34px 24px 64px; }
+        .topbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 34px; }
+        .eyebrow { margin: 0 0 8px; color: var(--green); font: 700 12px/1.2 "Trebuchet MS", sans-serif; letter-spacing: 1.8px; }
+        h1, h2, h3, p { margin-top: 0; }
+        h1 { margin-bottom: 8px; font-size: clamp(30px, 5vw, 48px); letter-spacing: -1px; }
+        .subtitle { margin-bottom: 0; color: var(--muted); font: 15px/1.6 "Trebuchet MS", sans-serif; }
+        .primary, .secondary { border: 0; border-radius: 5px; padding: 13px 19px; font: 700 14px "Trebuchet MS", sans-serif; }
+        .primary { color: white; background: var(--green); box-shadow: 0 5px 14px #176b4d2b; }
+        .primary:hover { background: #0f573d; }
+        .secondary { color: var(--green); background: transparent; border: 1px solid #aac9bb; }
+        .secondary:hover { background: var(--mint); }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 28px; }
+        .stat { padding: 18px 20px; border-right: 1px solid var(--line); }
+        .stat:last-child { border-right: 0; }
+        .stat strong { display: block; font-size: 28px; }
+        .stat span { color: var(--muted); font: 12px "Trebuchet MS", sans-serif; }
+        .section-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+        .section-heading h2 { margin-bottom: 0; font-size: 24px; }
+        .count { color: var(--muted); font: 13px "Trebuchet MS", sans-serif; }
+        .search-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+        .search-bar label { margin: 0; color: var(--green); white-space: nowrap; }
+        .search-bar input { flex: 0 0 50%; width: 50%; min-width: 0; padding: 12px 14px; }
+        .table-wrap { overflow-x: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 5px; }
+        .purchase-table { width: 100%; min-width: 1100px; border-collapse: collapse; text-align: left; }
+        .purchase-table th, .purchase-table td { padding: 15px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+        .purchase-table th { color: var(--muted); background: #f2f7f4; font: 700 11px "Trebuchet MS", sans-serif; letter-spacing: .4px; white-space: nowrap; }
+        .purchase-table td { font: 13px/1.45 "Trebuchet MS", sans-serif; white-space: nowrap; }
+        .purchase-table tbody tr:last-child td { border-bottom: 0; }
+        .purchase-table tbody tr:hover { background: #f7fbf8; }
+        .item-cell { min-width: 190px; }
+        .item-cell strong { display: block; margin-bottom: 4px; color: var(--ink); font: 700 16px Georgia, "Noto Serif TC", serif; }
+        .cat-no { min-width: 120px; white-space: nowrap; }
+        .subtle { display: inline-block; color: var(--muted); font-size: 11px; }
+        .amount { color: var(--ink); font-weight: 700; white-space: nowrap; }
+        .amount.high { color: #b42318; }
+        .attachment-cell { display: flex; gap: 7px; min-width: 330px; }
+        .id { color: var(--muted); font: 12px "Trebuchet MS", sans-serif; }
+        .meta { display: flex; flex-wrap: wrap; gap: 16px; color: #53655f; font: 13px "Trebuchet MS", sans-serif; }
+        .meta b { color: var(--ink); }
+        .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 20px; font: 700 11px "Trebuchet MS", sans-serif; }
+        .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+        .badge.pending { color: #a75c25; background: #fff0e3; }
+        .badge.ready { color: var(--green); background: var(--mint); }
+        .attachments { display: flex; justify-content: flex-end; gap: 8px; }
+        .attach { min-width: 108px; padding: 10px 12px; border: 1px dashed #a9bdb5; border-radius: 4px; color: #53655f; background: white; font: 12px "Trebuchet MS", sans-serif; }
+        .attach.done { color: var(--green); border-style: solid; border-color: #a9d0bd; background: #f1faf5; }
+        .attach:has(input:disabled) { cursor: wait; opacity: .65; }
+        .attach input { display: none; }
+        .empty { padding: 48px 20px; text-align: center; color: var(--muted); background: var(--paper); border: 1px dashed #b9c9c3; font: 14px/1.8 "Trebuchet MS", sans-serif; }
+        .pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 18px 0 2px; }
+        .page-button { min-width: 34px; height: 34px; padding: 0 10px; color: var(--green); background: var(--paper); border: 1px solid #aac9bb; border-radius: 4px; font: 700 13px "Trebuchet MS", sans-serif; }
+        .page-button:hover:not(:disabled) { color: white; background: var(--green); }
+        .page-button:disabled { cursor: not-allowed; opacity: .4; }
+        .page-status { color: var(--muted); font: 12px "Trebuchet MS", sans-serif; }
+        .form-view { max-width: 720px; margin: 0 auto; }
+        .form-card { padding: 30px; background: var(--paper); border: 1px solid var(--line); border-radius: 5px; }
+        .form-card h2 { margin-bottom: 6px; font-size: 28px; }
+        .form-card .hint { color: var(--muted); font: 13px/1.5 "Trebuchet MS", sans-serif; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 26px 0; }
+        .field.full { grid-column: 1 / -1; }
+        label { display: block; margin-bottom: 7px; font: 700 12px "Trebuchet MS", sans-serif; }
+        input[type="text"], input[type="number"], input[type="date"], textarea { width: 100%; padding: 12px; color: var(--ink); border: 1px solid #c7d6d0; border-radius: 3px; background: white; }
+        input:focus, textarea:focus { outline: 2px solid #b9decb; border-color: var(--green); }
+        .form-actions { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--line); padding-top: 20px; }
+        .status { min-height: 20px; margin-top: 13px; text-align: right; color: var(--green); font: 13px "Trebuchet MS", sans-serif; }
+        .status.error { color: #b42318; }
+        @media (max-width: 680px) {
+            .shell { padding: 25px 16px 45px; }
+            .topbar { align-items: flex-start; flex-direction: column; margin-bottom: 25px; }
+            .topbar .primary { width: 100%; }
+            .stats { grid-template-columns: 1fr 1fr; }
+            .stat:last-child { grid-column: 1 / -1; border-top: 1px solid var(--line); border-right: 0; }
+            .search-bar { align-items: stretch; flex-direction: column; gap: 7px; }
+            .search-bar input { width: 100%; flex-basis: auto; }
+            .form-card { padding: 22px 18px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .field.full { grid-column: auto; }
+            .form-actions { flex-direction: column-reverse; }
+            .form-actions button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<main class="shell">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">YAS LAB / REIMBURSEMENT</p>
+            <h1>實驗室採購核銷平台</h1>
+            <p class="subtitle">集中管理實驗室採購紀錄與核銷附件</p>
+        </div>
+        <button class="primary" id="newPurchaseButton" type="button">＋ 建立新的採購項目</button>
+    </header>
+    <section id="historyView">
+        <div class="stats">
+            <div class="stat"><strong id="totalCount">0</strong><span>全部採購項目</span></div>
+            <div class="stat"><strong id="pendingCount">0</strong><span>待補附件</span></div>
+            <div class="stat"><strong id="readyCount">0</strong><span>附件完整</span></div>
+        </div>
+        <div class="search-bar"><label for="searchInput">搜尋採購紀錄</label><input id="searchInput" type="search" placeholder="輸入品項、採購人、貨號、備註等關鍵字" autocomplete="off"></div>
+        <div class="section-heading"><h2>歷史採購項目</h2><span class="count" id="listCount"></span></div>
+        <div class="purchase-list" id="purchaseList"></div>
+        <nav class="pagination" id="pagination" aria-label="歷史採購項目分頁"></nav>
+    </section>
+    <section class="form-view" id="formView" hidden>
+        <div class="form-card">
+            <button class="secondary" id="backButton" type="button">← 返回歷史紀錄</button>
+            <h2 style="margin-top: 24px">建立新的採購項目</h2>
+            <p class="hint">先登錄採購資訊，貨單照與發票可在採購完成後從歷史紀錄補上。</p>
+            <form id="purchaseForm">
+                <div class="form-grid">
+                    <div class="field"><label for="purchaser">採購人</label><input id="purchaser" required type="text" placeholder="例如：王小明"></div>
+                    <div class="field"><label for="orderDate">訂購日期</label><input id="orderDate" required type="date"></div>
+                    <div class="field full"><label for="itemName">品項名稱</label><input id="itemName" required type="text" placeholder="例如：細胞培養皿 100 mm"></div>
+                    <div class="field"><label for="agent">代理商</label><input id="agent" required type="text" placeholder="例如：台灣默克"></div>
+                    <div class="field"><label for="catNo">貨號</label><input id="catNo" required type="text" placeholder="例如：CLS430167"></div>
+                    <div class="field"><label for="brand">廠牌</label><input id="brand" required type="text" placeholder="例如：Corning"></div>
+                    <div class="field"><label for="price">總金額（NTD）</label><input id="price" required min="0" type="number" placeholder="0"></div>
+                    <div class="field full"><label for="notes">備註（選填）</label><textarea id="notes" rows="3" placeholder="補充規格、用途或其他採購資訊"></textarea></div>
+                </div>
+                <div class="form-actions"><button class="secondary" id="cancelButton" type="button">取消</button><button class="primary" type="submit">建立採購紀錄</button></div>
+                <div class="status" id="status" aria-live="polite"></div>
+            </form>
+        </div>
+    </section>
+</main>
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzTR5OYtckTm1wvK5zSXwTtug8J3Lrej3YLQUiDllF6OL7Vn4TwnmF9jc55Y_zI42g2Gg/exec";
+    const historyView = document.getElementById("historyView");
+    const formView = document.getElementById("formView");
+    const purchaseList = document.getElementById("purchaseList");
+    const searchInput = document.getElementById("searchInput");
+    let purchases = [];
+    const pageSize = 15;
+    let currentPage = 1;
 
+    function showHistory() {
+        historyView.hidden = false;
+        formView.hidden = true;
+        renderPurchases();
+    }
+
+    function showForm() {
+        historyView.hidden = true;
+        formView.hidden = false;
+        document.getElementById("orderDate").value = new Date().toISOString().slice(0, 10);
+        document.getElementById("purchaser").focus();
+    }
+
+    async function callApi(payload) {
+        if (!API_URL || API_URL.includes("請貼上")) {
+            throw new Error("請先在 index.html 設定 Apps Script Web App URL");
+        }
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+            throw new Error(`API 回應錯誤（${response.status}）`);
+        }
+        const result = await response.json();
+        if (!result.ok) {
+            throw new Error(result.error || "API 呼叫失敗");
+        }
+        return result;
+    }
+
+    async function loadPurchases() {
+        try {
+            const result = await callApi({ action: "listPurchases" });
+            purchases = Array.isArray(result.purchases) ? result.purchases : [];
+            renderPurchases();
+        } catch (error) {
+            purchaseList.innerHTML = `<div class="empty">${escapeHtml(error.message)}<br>請確認 Apps Script URL 與部署權限</div>`;
+            document.getElementById("pagination").innerHTML = "";
+        }
+    }
+
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result).split(",")[1]);
+            reader.onerror = () => reject(new Error("檔案讀取失敗"));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function uploadAttachment(file, purchaseId, attachmentType) {
+        const base64 = await fileToBase64(file);
+        await callApi({
+            action: "uploadAttachment",
+            purchaseId,
+            attachmentType,
+            fileName: file.name,
+            mimeType: file.type,
+            base64
+        });
+    }
+
+    function renderPurchases() {
+        const pending = purchases.filter(purchase => !purchase.delivery || !purchase.invoice || (Number(purchase.price) > 10000 && !purchase.quotation)).length;
+        const query = searchInput.value.trim().toLocaleLowerCase();
+        const filteredPurchases = query ? purchases.filter(purchase => Object.values(purchase).some(value => String(value).toLocaleLowerCase().includes(query))) : purchases;
+        document.getElementById("totalCount").textContent = purchases.length;
+        document.getElementById("pendingCount").textContent = pending;
+        document.getElementById("readyCount").textContent = purchases.length - pending;
+        document.getElementById("listCount").textContent = filteredPurchases.length ? `顯示 ${filteredPurchases.length} / ${purchases.length} 筆` : (purchases.length ? "查無符合的採購紀錄" : "尚無紀錄");
+        if (!filteredPurchases.length) {
+            purchaseList.innerHTML = purchases.length ? '<div class="empty">查無符合的採購紀錄<br>請嘗試其他關鍵字</div>' : '<div class="empty">目前還沒有採購紀錄<br>從上方按鈕建立第一筆採購項目</div>';
+            document.getElementById("pagination").innerHTML = "";
+            return;
+        }
+        const totalPages = Math.ceil(filteredPurchases.length / pageSize);
+        currentPage = Math.min(currentPage, totalPages);
+        const startIndex = (currentPage - 1) * pageSize;
+        const visiblePurchases = filteredPurchases.slice(startIndex, startIndex + pageSize);
+        purchaseList.innerHTML = `<div class="table-wrap"><table class="purchase-table"><thead><tr><th>採購項目</th><th>採購人</th><th>訂購日期</th><th>總金額</th><th>廠牌</th><th>代理商</th><th>貨號</th><th>備註</th><th>附件</th></tr></thead><tbody>${visiblePurchases.map((purchase, visibleIndex) => {
+            const index = purchases.indexOf(purchase);
+            const needsQuotation = Number(purchase.price) > 10000;
+            const complete = purchase.delivery && purchase.invoice && (!needsQuotation || purchase.quotation);
+            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span></td><td>${escapeHtml(purchase.purchaser)}</td><td>${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td>${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? `<label class="attach ${purchase.quotation ? "done" : ""}">${purchase.quotation ? "✓ 估價單" : "＋ 估價單"}<input type="file" accept="image/*,.pdf" data-type="quotation" data-id="${escapeHtml(purchase.id)}"></label>` : ""}<label class="attach ${purchase.delivery ? "done" : ""}">${purchase.delivery ? "✓ 到貨單" : "＋ 到貨單"}<input type="file" accept="image/*,.pdf" data-type="delivery" data-id="${escapeHtml(purchase.id)}"></label><label class="attach ${purchase.invoice ? "done" : ""}">${purchase.invoice ? "✓ 發票" : "＋ 發票"}<input type="file" accept="image/*,.pdf" data-type="invoice" data-id="${escapeHtml(purchase.id)}"></label></div></td></tr>`;
+        }).join("")}</tbody></table></div>`;
+        purchaseList.querySelectorAll("input[type=file]").forEach(input => input.addEventListener("change", handleAttachment));
+        renderPagination(totalPages);
+    }
+
+    function renderPagination(totalPages) {
+        const pagination = document.getElementById("pagination");
+        if (totalPages <= 1) {
+            pagination.innerHTML = "";
+            return;
+        }
+        pagination.innerHTML = `<button class="page-button" type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? "disabled" : ""} aria-label="上一頁">←</button><span class="page-status">第 ${currentPage} / ${totalPages} 頁</span><button class="page-button" type="button" data-page="${currentPage + 1}" ${currentPage === totalPages ? "disabled" : ""} aria-label="下一頁">→</button>`;
+        pagination.querySelectorAll("button[data-page]").forEach(button => button.addEventListener("click", () => {
+            currentPage = Number(button.dataset.page);
+            renderPurchases();
+        }));
+    }
+
+    async function handleAttachment(event) {
+        const input = event.target;
+        if (!input.files.length) return;
+        const file = input.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+            alert("檔案不可超過 10 MB");
+            input.value = "";
+            return;
+        }
+        try {
+            input.disabled = true;
+            await uploadAttachment(file, input.dataset.id, input.dataset.type);
+            await loadPurchases();
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            input.disabled = false;
+            input.value = "";
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value).replace(/[&<>'"]/g, character => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"}[character]));
+    }
+
+    document.getElementById("newPurchaseButton").addEventListener("click", showForm);
+    document.getElementById("backButton").addEventListener("click", showHistory);
+    document.getElementById("cancelButton").addEventListener("click", showHistory);
+    searchInput.addEventListener("input", () => {
+        currentPage = 1;
+        renderPurchases();
+    });
+    document.getElementById("purchaseForm").addEventListener("submit", async event => {
+        event.preventDefault();
+        const purchase = { id: `EX-${Date.now().toString().slice(-6)}`, purchaser: document.getElementById("purchaser").value.trim(), itemName: document.getElementById("itemName").value.trim(), agent: document.getElementById("agent").value.trim(), catNo: document.getElementById("catNo").value.trim(), brand: document.getElementById("brand").value.trim(), notes: document.getElementById("notes").value.trim(), price: document.getElementById("price").value, orderDate: document.getElementById("orderDate").value, quotation: "", delivery: "", invoice: "" };
+        const status = document.getElementById("status");
+        const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+        try {
+            submitButton.disabled = true;
+            status.className = "status";
+            status.textContent = "正在建立採購紀錄…";
+            const result = await callApi({ action: "createPurchase", purchase });
+            purchases.unshift(result.purchase);
+            currentPage = 1;
+            document.getElementById("purchaseForm").reset();
+            showHistory();
+        } catch (error) {
+            status.className = "status error";
+            status.textContent = error.message;
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+    loadPurchases();
+</script>
+</body>
+</html>
