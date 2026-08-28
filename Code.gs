@@ -186,7 +186,12 @@ function uploadAttachment(request) {
   const safeFileName = createSafeFileName(fileName);
   const blob = Utilities.newBlob(decodedBytes, mimeType, safeFileName);
   const file = purchaseFolder.createFile(blob);
-  const fileUrl = file.getUrl();
+  file.setSharing(
+    DriveApp.Access.ANYONE_WITH_LINK,
+    DriveApp.Permission.VIEW
+  );
+  const fileUrl = "https://drive.google.com/uc?export=view&id=" +
+    encodeURIComponent(file.getId());
 
   const rowNumber = findPurchaseRowNumber(purchaseId);
   const columnNumber = getHeaderColumnNumber(attachmentType);

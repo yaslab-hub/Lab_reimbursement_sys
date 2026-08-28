@@ -45,7 +45,7 @@
         .subtle { display: inline-block; color: var(--muted); font-size: 11px; }
         .amount { color: var(--ink); font-weight: 700; white-space: nowrap; }
         .amount.high { color: #b42318; }
-        .attachment-cell { display: flex; gap: 7px; min-width: 330px; }
+        .attachment-cell { display: flex; align-items: center; gap: 7px; min-width: 330px; }
         .id { color: var(--muted); font: 12px "Trebuchet MS", sans-serif; }
         .meta { display: flex; flex-wrap: wrap; gap: 16px; color: #53655f; font: 13px "Trebuchet MS", sans-serif; }
         .meta b { color: var(--ink); }
@@ -54,10 +54,23 @@
         .badge.pending { color: #a75c25; background: #fff0e3; }
         .badge.ready { color: var(--green); background: var(--mint); }
         .attachments { display: flex; justify-content: flex-end; gap: 8px; }
-        .attach { min-width: 108px; padding: 10px 12px; border: 1px dashed #a9bdb5; border-radius: 4px; color: #53655f; background: white; font: 12px "Trebuchet MS", sans-serif; }
-        .attach.done { color: var(--green); border-style: solid; border-color: #a9d0bd; background: #f1faf5; }
-        .attach:has(input:disabled) { cursor: wait; opacity: .65; }
-        .attach input { display: none; }
+        .attachment-group { display: inline-flex; align-items: stretch; overflow: hidden; width: 158px; height: 40px; border: 1px solid #a9d0bd; border-radius: 4px; background: #f1faf5; }
+        .attachment-view, .attachment-replace, .attachment-upload { display: inline-flex; align-items: center; justify-content: center; font: 12px "Trebuchet MS", sans-serif; text-decoration: none; cursor: pointer; }
+        .attachment-view { flex: 1; gap: 5px; height: 100%; padding: 0 8px; color: var(--green); font-weight: 700; }
+        .attachment-view:hover { background: #e2f4e9; }
+        .attachment-replace { width: 34px; height: 100%; margin: 0; border-left: 1px solid #c4dfce; color: #53655f; font-size: 16px; }
+        .attachment-replace:hover { color: var(--green); background: #e2f4e9; }
+        .attachment-upload { width: 158px; height: 40px; margin: 0; padding: 0 11px; border: 1px dashed #a9bdb5; border-radius: 4px; color: #53655f; background: white; }
+        .attachment-upload:hover { color: var(--green); background: var(--mint); }
+        .attachment-loading { display: none; align-items: center; justify-content: center; gap: 7px; height: 100%; padding: 0 10px; color: var(--green); font-weight: 700; }
+        .attachment-replace .attachment-loading { padding: 0; }
+        .attachment-spinner { width: 13px; height: 13px; border: 2px solid #b9decb; border-top-color: var(--green); border-radius: 50%; animation: attachment-spin .7s linear infinite; }
+        @keyframes attachment-spin { to { transform: rotate(360deg); } }
+        .is-uploading { cursor: wait; pointer-events: none; }
+        .is-uploading .attachment-label { display: none; }
+        .is-uploading .attachment-loading { display: inline-flex; }
+        .attachment-group input, .attachment-upload input { display: none; }
+        .is-uploading { opacity: .75; }
         .empty { padding: 48px 20px; text-align: center; color: var(--muted); background: var(--paper); border: 1px dashed #b9c9c3; font: 14px/1.8 "Trebuchet MS", sans-serif; }
         .pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 18px 0 2px; }
         .page-button { min-width: 34px; height: 34px; padding: 0 10px; color: var(--green); background: var(--paper); border: 1px solid #aac9bb; border-radius: 4px; font: 700 13px "Trebuchet MS", sans-serif; }
@@ -177,10 +190,26 @@
         return result;
     }
 
+    function sortPurchasesByOrderDate(items) {
+        return items.slice().sort((first, second) => {
+            const orderDateCompare = String(second.orderDate || "")
+                .localeCompare(String(first.orderDate || ""));
+
+            if (orderDateCompare !== 0) {
+                return orderDateCompare;
+            }
+
+            return String(second.createdAt || "")
+                .localeCompare(String(first.createdAt || ""));
+        });
+    }
+
     async function loadPurchases() {
         try {
             const result = await callApi({ action: "listPurchases" });
-            purchases = Array.isArray(result.purchases) ? result.purchases : [];
+            purchases = sortPurchasesByOrderDate(
+                Array.isArray(result.purchases) ? result.purchases : []
+            );
             renderPurchases();
         } catch (error) {
             purchaseList.innerHTML = `<div class="empty">${escapeHtml(error.message)}<br>請確認 Apps Script URL 與部署權限</div>`;
@@ -209,6 +238,19 @@
         });
     }
 
+    function renderAttachment(purchase, type, label) {
+        const fileUrl = purchase[type];
+        const escapedId = escapeHtml(purchase.id);
+        const loadingMarkup = `<span class="attachment-loading"><span class="attachment-spinner" aria-hidden="true"></span><span>上傳中…</span></span>`;
+        const replacementLoadingMarkup = `<span class="attachment-loading" aria-label="上傳中"><span class="attachment-spinner" aria-hidden="true"></span></span>`;
+
+        if (fileUrl) {
+            return `<div class="attachment-group"><a class="attachment-view" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">✓</span><span>檢視${label}</span></a><label class="attachment-replace" title="重新上傳${label}" aria-label="重新上傳${label}"><span class="attachment-label" aria-hidden="true">↻</span>${replacementLoadingMarkup}<input type="file" accept="image/*,.pdf" data-type="${type}" data-id="${escapedId}"></label></div>`;
+        }
+
+        return `<label class="attachment-upload"><span class="attachment-label">＋ 上傳${label}</span>${loadingMarkup}<input type="file" accept="image/*,.pdf" data-type="${type}" data-id="${escapedId}"></label>`;
+    }
+
     function renderPurchases() {
         const pending = purchases.filter(purchase => !purchase.delivery || !purchase.invoice || (Number(purchase.price) > 10000 && !purchase.quotation)).length;
         const query = searchInput.value.trim().toLocaleLowerCase();
@@ -230,7 +272,7 @@
             const index = purchases.indexOf(purchase);
             const needsQuotation = Number(purchase.price) > 10000;
             const complete = purchase.delivery && purchase.invoice && (!needsQuotation || purchase.quotation);
-            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span></td><td>${escapeHtml(purchase.purchaser)}</td><td>${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td>${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? `<label class="attach ${purchase.quotation ? "done" : ""}">${purchase.quotation ? "✓ 估價單" : "＋ 估價單"}<input type="file" accept="image/*,.pdf" data-type="quotation" data-id="${escapeHtml(purchase.id)}"></label>` : ""}<label class="attach ${purchase.delivery ? "done" : ""}">${purchase.delivery ? "✓ 到貨單" : "＋ 到貨單"}<input type="file" accept="image/*,.pdf" data-type="delivery" data-id="${escapeHtml(purchase.id)}"></label><label class="attach ${purchase.invoice ? "done" : ""}">${purchase.invoice ? "✓ 發票" : "＋ 發票"}<input type="file" accept="image/*,.pdf" data-type="invoice" data-id="${escapeHtml(purchase.id)}"></label></div></td></tr>`;
+            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span></td><td>${escapeHtml(purchase.purchaser)}</td><td>${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td>${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? renderAttachment(purchase, "quotation", "估價單") : ""}${renderAttachment(purchase, "delivery", "到貨單")}${renderAttachment(purchase, "invoice", "發票")}</div></td></tr>`;
         }).join("")}</tbody></table></div>`;
         purchaseList.querySelectorAll("input[type=file]").forEach(input => input.addEventListener("change", handleAttachment));
         renderPagination(totalPages);
@@ -260,12 +302,20 @@
         }
         try {
             input.disabled = true;
+            const control = input.closest(".attachment-upload, .attachment-replace");
+            control.classList.add("is-uploading");
+            control.setAttribute("aria-busy", "true");
             await uploadAttachment(file, input.dataset.id, input.dataset.type);
             await loadPurchases();
         } catch (error) {
             alert(error.message);
         } finally {
             input.disabled = false;
+            const control = input.closest(".attachment-upload, .attachment-replace");
+            if (control) {
+                control.classList.remove("is-uploading");
+                control.removeAttribute("aria-busy");
+            }
             input.value = "";
         }
     }
@@ -291,7 +341,10 @@
             status.className = "status";
             status.textContent = "正在建立採購紀錄…";
             const result = await callApi({ action: "createPurchase", purchase });
-            purchases.unshift(result.purchase);
+            purchases = sortPurchasesByOrderDate([
+                result.purchase,
+                ...purchases
+            ]);
             currentPage = 1;
             document.getElementById("purchaseForm").reset();
             showHistory();
