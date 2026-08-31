@@ -128,21 +128,21 @@
     </section>
     <section class="form-view" id="formView" hidden>
         <div class="form-card">
-            <button class="secondary" id="backButton" type="button">← 返回歷史紀錄</button>
+            <button class="secondary" id="backButton" type="button">← Return</button>
             <h2 style="margin-top: 24px">建立新的採購項目</h2>
             <p class="hint">先登錄採購資訊，貨單照與發票可在採購完成後從歷史紀錄補上。</p>
             <form id="purchaseForm">
                 <div class="form-grid">
-                    <div class="field"><label for="purchaser">採購人</label><input id="purchaser" required type="text" placeholder="例如：王小明"></div>
-                    <div class="field"><label for="orderDate">訂購日期</label><input id="orderDate" required type="date"></div>
-                    <div class="field full"><label for="itemName">品項名稱</label><input id="itemName" required type="text" placeholder="例如：細胞培養皿 100 mm"></div>
-                    <div class="field"><label for="agent">代理商</label><input id="agent" required type="text" placeholder="例如：台灣默克"></div>
-                    <div class="field"><label for="catNo">貨號</label><input id="catNo" required type="text" placeholder="例如：CLS430167"></div>
-                    <div class="field"><label for="brand">廠牌</label><input id="brand" required type="text" placeholder="例如：Corning"></div>
+                    <div class="field"><label for="purchaser">採購人 Purchaser</label><input id="purchaser" required type="text" placeholder="Ex. Jessie"></div>
+                    <div class="field"><label for="orderDate">訂購日期 Order Date</label><input id="orderDate" required type="date"></div>
+                    <div class="field full"><label for="itemName">品項名稱 Item Name</label><input id="itemName" required type="text" placeholder="Ex. Cell Culture Dish 100 mm"></div>
+                    <div class="field"><label for="agent">代理商 Agent</label><input id="agent" required type="text" placeholder="Ex. Taiwan Merck"></div>
+                    <div class="field"><label for="catNo">貨號 Cat Number</label><input id="catNo" required type="text" placeholder="Ex. CLS430167"></div>
+                    <div class="field"><label for="brand">廠牌 Brand</label><input id="brand" required type="text" placeholder="Ex. Corning"></div>
                     <div class="field"><label for="price">總金額（NTD）</label><input id="price" required min="0" type="number" placeholder="0"></div>
-                    <div class="field full"><label for="notes">備註（選填）</label><textarea id="notes" rows="3" placeholder="補充規格、用途或其他採購資訊"></textarea></div>
+                    <div class="field full"><label for="notes">備註 Notes (Optional)</label><textarea id="notes" rows="3" placeholder="Ex. Additional specifications, usage, or other procurement information"></textarea></div>
                 </div>
-                <div class="form-actions"><button class="secondary" id="cancelButton" type="button">取消</button><button class="primary" type="submit">建立採購紀錄</button></div>
+                <div class="form-actions"><button class="secondary" id="cancelButton" type="button">Cancel</button><button class="primary" type="submit">Create</button></div>
                 <div class="status" id="status" aria-live="polite"></div>
             </form>
         </div>
@@ -206,6 +206,8 @@
 
     async function loadPurchases() {
         try {
+            purchaseList.innerHTML = '<div class="empty">Loading...</div>';
+            document.getElementById("pagination").innerHTML = "";
             const result = await callApi({ action: "listPurchases" });
             purchases = sortPurchasesByOrderDate(
                 Array.isArray(result.purchases) ? result.purchases : []
@@ -241,14 +243,14 @@
     function renderAttachment(purchase, type, label) {
         const fileUrl = purchase[type];
         const escapedId = escapeHtml(purchase.id);
-        const loadingMarkup = `<span class="attachment-loading"><span class="attachment-spinner" aria-hidden="true"></span><span>上傳中…</span></span>`;
-        const replacementLoadingMarkup = `<span class="attachment-loading" aria-label="上傳中"><span class="attachment-spinner" aria-hidden="true"></span></span>`;
+        const loadingMarkup = `<span class="attachment-loading"><span class="attachment-spinner" aria-hidden="true"></span><span>Uploading…</span></span>`;
+        const replacementLoadingMarkup = `<span class="attachment-loading" aria-label="Uploading"><span class="attachment-spinner" aria-hidden="true"></span></span>`;
 
         if (fileUrl) {
-            return `<div class="attachment-group"><a class="attachment-view" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">✓</span><span>檢視${label}</span></a><label class="attachment-replace" title="重新上傳${label}" aria-label="重新上傳${label}"><span class="attachment-label" aria-hidden="true">↻</span>${replacementLoadingMarkup}<input type="file" accept="image/*,.pdf" data-type="${type}" data-id="${escapedId}"></label></div>`;
+            return `<div class="attachment-group"><a class="attachment-view" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">✓</span><span>View ${label}</span></a><label class="attachment-replace" title="Replace ${label}" aria-label="Replace ${label}"><span class="attachment-label" aria-hidden="true">↻</span>${replacementLoadingMarkup}<input type="file" accept="image/*,.pdf" data-type="${type}" data-id="${escapedId}"></label></div>`;
         }
 
-        return `<label class="attachment-upload"><span class="attachment-label">＋ 上傳${label}</span>${loadingMarkup}<input type="file" accept="image/*,.pdf" data-type="${type}" data-id="${escapedId}"></label>`;
+        return `<label class="attachment-upload"><span class="attachment-label">+ ${label}</span>${loadingMarkup}<input type="file" accept="image/*,.pdf" data-type="${type}" data-id="${escapedId}"></label>`;
     }
 
     function renderPurchases() {
@@ -268,11 +270,11 @@
         currentPage = Math.min(currentPage, totalPages);
         const startIndex = (currentPage - 1) * pageSize;
         const visiblePurchases = filteredPurchases.slice(startIndex, startIndex + pageSize);
-        purchaseList.innerHTML = `<div class="table-wrap"><table class="purchase-table"><thead><tr><th>採購項目</th><th>採購人</th><th>訂購日期</th><th>總金額</th><th>廠牌</th><th>代理商</th><th>貨號</th><th>備註</th><th>附件</th></tr></thead><tbody>${visiblePurchases.map((purchase, visibleIndex) => {
+        purchaseList.innerHTML = `<div class="table-wrap"><table class="purchase-table"><thead><tr><th>採購項目</th><th>採購人</th><th>訂購日期</th><th>總金額</th><th>廠牌</th><th>代理商</th><th>貨號</th><th>附件</th><th>備註</th></tr></thead><tbody>${visiblePurchases.map((purchase, visibleIndex) => {
             const index = purchases.indexOf(purchase);
             const needsQuotation = Number(purchase.price) > 10000;
             const complete = purchase.delivery && purchase.invoice && (!needsQuotation || purchase.quotation);
-            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span></td><td>${escapeHtml(purchase.purchaser)}</td><td>${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td>${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? renderAttachment(purchase, "quotation", "估價單") : ""}${renderAttachment(purchase, "delivery", "到貨單")}${renderAttachment(purchase, "invoice", "發票")}</div></td></tr>`;
+            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span></td><td>${escapeHtml(purchase.purchaser)}</td><td>${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? renderAttachment(purchase, "quotation", "Quote") : ""}${renderAttachment(purchase, "delivery", "Delivery note")}${renderAttachment(purchase, "invoice", "Invoice")}</div></td><td>${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td></tr>`;
         }).join("")}</tbody></table></div>`;
         purchaseList.querySelectorAll("input[type=file]").forEach(input => input.addEventListener("change", handleAttachment));
         renderPagination(totalPages);
