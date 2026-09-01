@@ -36,12 +36,14 @@
         .purchase-table { width: 100%; min-width: 1100px; border-collapse: collapse; text-align: left; }
         .purchase-table th, .purchase-table td { padding: 15px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
         .purchase-table th { color: var(--muted); background: #f2f7f4; font: 700 11px "Trebuchet MS", sans-serif; letter-spacing: .4px; white-space: nowrap; }
-        .purchase-table td { font: 13px/1.45 "Trebuchet MS", sans-serif; white-space: nowrap; }
+        .purchase-table td { font: 13px/1.45 "Trebuchet MS", sans-serif; white-space: normal; }
         .purchase-table tbody tr:last-child td { border-bottom: 0; }
         .purchase-table tbody tr:hover { background: #f7fbf8; }
-        .item-cell { min-width: 190px; }
+        .item-cell { min-width: 190px; max-width: 260px; white-space: normal; overflow-wrap: anywhere; }
         .item-cell strong { display: block; margin-bottom: 4px; color: var(--ink); font: 700 16px Georgia, "Noto Serif TC", serif; }
-        .cat-no { min-width: 120px; white-space: nowrap; }
+        .cat-no { min-width: 120px; max-width: 180px; overflow-wrap: anywhere; }
+        .notes-cell { min-width: 180px; max-width: 300px; overflow-wrap: anywhere; }
+        .purchase-table .purchaser-cell, .purchase-table .order-date-cell, .purchase-table .amount, .purchase-table .attachment-cell { white-space: nowrap; }
         .subtle { display: inline-block; color: var(--muted); font-size: 11px; }
         .amount { color: var(--ink); font-weight: 700; white-space: nowrap; }
         .amount.high { color: #b42318; }
@@ -274,7 +276,7 @@
             const index = purchases.indexOf(purchase);
             const needsQuotation = Number(purchase.price) > 10000;
             const complete = purchase.delivery && purchase.invoice && (!needsQuotation || purchase.quotation);
-            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span></td><td>${escapeHtml(purchase.purchaser)}</td><td>${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? renderAttachment(purchase, "quotation", "Quote") : ""}${renderAttachment(purchase, "delivery", "Delivery note")}${renderAttachment(purchase, "invoice", "Invoice")}</div></td><td>${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td></tr>`;
+            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span></td><td class="purchaser-cell">${escapeHtml(purchase.purchaser)}</td><td class="order-date-cell">${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? renderAttachment(purchase, "quotation", "Quote") : ""}${renderAttachment(purchase, "delivery", "Delivery note")}${renderAttachment(purchase, "invoice", "Invoice")}</div></td><td class="notes-cell">${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td></tr>`;
         }).join("")}</tbody></table></div>`;
         purchaseList.querySelectorAll("input[type=file]").forEach(input => input.addEventListener("change", handleAttachment));
         renderPagination(totalPages);
