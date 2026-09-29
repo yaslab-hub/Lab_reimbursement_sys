@@ -63,6 +63,12 @@ function doPost(event) {
           purchase: createPurchase(request.purchase)
         });
 
+      case "updatePurchase":
+        return jsonResponse({
+          ok: true,
+          purchase: updatePurchase(request.purchase)
+        });
+
       case "uploadAttachment":
         return jsonResponse({
           ok: true,
@@ -131,6 +137,66 @@ function createPurchase(input) {
     sheet.appendRow(HEADERS.map(header => purchase[header] || ""));
 
     return purchase;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+
+function updatePurchase(input) {
+  if (!input || typeof input !== "object") {
+    throw new Error("採購資料格式錯誤");
+  }
+
+  const purchaseId = cleanText(input.id);
+
+  if (!purchaseId) {
+    throw new Error("缺少採購編號");
+  }
+
+  validatePurchase(input);
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+
+  try {
+    const sheet = getPurchasesSheet();
+    const rowNumber = findPurchaseRowNumber(purchaseId);
+
+    // 只更新可編輯欄位；id、附件連結、createdAt 保持不變
+    const editableFields = [
+      "purchaser",
+      "itemName",
+      "agent",
+      "catNo",
+      "brand",
+      "notes",
+      "price",
+      "orderDate"
+    ];
+
+    const values = {
+      purchaser: cleanText(input.purchaser),
+      itemName: cleanText(input.itemName),
+      agent: cleanText(input.agent),
+      catNo: cleanText(input.catNo),
+      brand: cleanText(input.brand),
+      notes: cleanText(input.notes),
+      price: Number(input.price),
+      orderDate: normalizeDate(input.orderDate)
+    };
+
+    editableFields.forEach(field => {
+      sheet
+        .getRange(rowNumber, getHeaderColumnNumber(field))
+        .setValue(values[field]);
+    });
+
+    const updatedRow = sheet
+      .getRange(rowNumber, 1, 1, HEADERS.length)
+      .getValues()[0];
+
+    return rowToPurchase(HEADERS, updatedRow);
   } finally {
     lock.releaseLock();
   }
