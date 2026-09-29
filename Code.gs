@@ -69,6 +69,12 @@ function doPost(event) {
           purchase: updatePurchase(request.purchase)
         });
 
+      case "deletePurchase":
+        return jsonResponse({
+          ok: true,
+          deleted: deletePurchase(request.purchaseId)
+        });
+
       case "uploadAttachment":
         return jsonResponse({
           ok: true,
@@ -200,6 +206,75 @@ function updatePurchase(input) {
   } finally {
     lock.releaseLock();
   }
+}
+
+
+function deletePurchase(purchaseId) {
+  const id = cleanText(purchaseId);
+
+  if (!id) {
+    throw new Error("缺少採購編號");
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+
+  try {
+    const sheet = getPurchasesSheet();
+    const rowNumber = findPurchaseRowNumber(id);
+
+    try {
+      sheet.deleteRow(rowNumber);
+    } catch (error) {
+      // 若試算表只剩凍結列而無法刪列，改為清空該列內容
+      sheet.getRange(rowNumber, 1, 1, HEADERS.length).clearContent();
+    }
+  } finally {
+    lock.releaseLock();
+  }
+
+  // 紀錄刪除後，附件資料夾移到 Drive 垃圾桶（30 天內可從垃圾桶還原）
+  const trashedFolders = trashAttachmentFolders(id);
+
+  return {
+    purchaseId: id,
+    trashedFolders
+  };
+}
+
+
+function trashAttachmentFolders(purchaseId) {
+  const folderIds = {
+    quotation: CONFIG.quotationFolderId,
+    delivery: CONFIG.deliveryFolderId,
+    invoice: CONFIG.invoiceFolderId
+  };
+
+  let trashedCount = 0;
+
+  Object.keys(folderIds).forEach(type => {
+    const folderId = folderIds[type];
+
+    if (!folderId || folderId.includes("請填入")) {
+      return;
+    }
+
+    try {
+      const folders = DriveApp
+        .getFolderById(folderId)
+        .getFoldersByName(purchaseId);
+
+      while (folders.hasNext()) {
+        folders.next().setTrashed(true);
+        trashedCount++;
+      }
+    } catch (error) {
+      // 附件清理失敗不應影響紀錄刪除，只記錄錯誤
+      console.error("移除附件資料夾失敗（" + type + "）：", error);
+    }
+  });
+
+  return trashedCount;
 }
 
 
