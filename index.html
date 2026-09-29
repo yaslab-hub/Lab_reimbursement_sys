@@ -48,6 +48,8 @@
         .amount { color: var(--ink); font-weight: 700; white-space: nowrap; }
         .amount.high { color: #b42318; }
         .attachment-cell { display: flex; align-items: center; gap: 7px; min-width: 330px; }
+        .edit-button { display: inline-block; margin: 6px 0 0 8px; padding: 2px 9px; color: var(--green); background: transparent; border: 1px solid #aac9bb; border-radius: 3px; font: 700 11px "Trebuchet MS", sans-serif; }
+        .edit-button:hover { background: var(--mint); }
         .id { color: var(--muted); font: 12px "Trebuchet MS", sans-serif; }
         .meta { display: flex; flex-wrap: wrap; gap: 16px; color: #53655f; font: 13px "Trebuchet MS", sans-serif; }
         .meta b { color: var(--ink); }
@@ -131,7 +133,7 @@
     <section class="form-view" id="formView" hidden>
         <div class="form-card">
             <button class="secondary" id="backButton" type="button">← Return</button>
-            <h2 style="margin-top: 24px">建立新的採購項目</h2>
+            <h2 id="formTitle" style="margin-top: 24px">建立新的採購項目</h2>
             <p class="hint">先登錄採購資訊，貨單照與發票可在採購完成後從歷史紀錄補上。</p>
             <form id="purchaseForm">
                 <div class="form-grid">
@@ -144,7 +146,7 @@
                     <div class="field"><label for="price">總金額（NTD）</label><input id="price" required min="0" type="number" placeholder="0"></div>
                     <div class="field full"><label for="notes">備註 Notes (Optional)</label><textarea id="notes" rows="3" placeholder="Ex. Additional specifications, usage, or other procurement information"></textarea></div>
                 </div>
-                <div class="form-actions"><button class="secondary" id="cancelButton" type="button">Cancel</button><button class="primary" type="submit">Create</button></div>
+                <div class="form-actions"><button class="secondary" id="cancelButton" type="button">Cancel</button><button class="primary" id="submitButton" type="submit">Create</button></div>
                 <div class="status" id="status" aria-live="polite"></div>
             </form>
         </div>
@@ -159,17 +161,32 @@
     let purchases = [];
     const pageSize = 15;
     let currentPage = 1;
+    let editingId = null;
 
     function showHistory() {
+        editingId = null;
         historyView.hidden = false;
         formView.hidden = true;
         renderPurchases();
     }
 
-    function showForm() {
+    const formFields = ["purchaser", "orderDate", "itemName", "agent", "catNo", "brand", "price", "notes"];
+
+    function showForm(purchase = null) {
         historyView.hidden = true;
         formView.hidden = false;
-        document.getElementById("orderDate").value = new Date().toISOString().slice(0, 10);
+        editingId = purchase ? purchase.id : null;
+        document.getElementById("purchaseForm").reset();
+        document.getElementById("status").textContent = "";
+        document.getElementById("formTitle").textContent = purchase ? "編輯採購項目" : "建立新的採購項目";
+        document.getElementById("submitButton").textContent = purchase ? "Save" : "Create";
+        if (purchase) {
+            formFields.forEach(field => {
+                document.getElementById(field).value = purchase[field] ?? "";
+            });
+        } else {
+            document.getElementById("orderDate").value = new Date().toISOString().slice(0, 10);
+        }
         document.getElementById("purchaser").focus();
     }
 
@@ -276,9 +293,13 @@
             const index = purchases.indexOf(purchase);
             const needsQuotation = Number(purchase.price) > 10000;
             const complete = purchase.delivery && purchase.invoice && (!needsQuotation || purchase.quotation);
-            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span></td><td class="purchaser-cell">${escapeHtml(purchase.purchaser)}</td><td class="order-date-cell">${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? renderAttachment(purchase, "quotation", "Quote") : ""}${renderAttachment(purchase, "delivery", "Delivery note")}${renderAttachment(purchase, "invoice", "Invoice")}</div></td><td class="notes-cell">${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td></tr>`;
+            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span><button class="edit-button" type="button" data-edit-id="${escapeHtml(purchase.id)}">編輯</button></td><td class="purchaser-cell">${escapeHtml(purchase.purchaser)}</td><td class="order-date-cell">${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? renderAttachment(purchase, "quotation", "Quote") : ""}${renderAttachment(purchase, "delivery", "Delivery note")}${renderAttachment(purchase, "invoice", "Invoice")}</div></td><td class="notes-cell">${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td></tr>`;
         }).join("")}</tbody></table></div>`;
         purchaseList.querySelectorAll("input[type=file]").forEach(input => input.addEventListener("change", handleAttachment));
+        purchaseList.querySelectorAll("button[data-edit-id]").forEach(button => button.addEventListener("click", () => {
+            const target = purchases.find(item => item.id === button.dataset.editId);
+            if (target) showForm(target);
+        }));
         renderPagination(totalPages);
     }
 
@@ -328,7 +349,7 @@
         return String(value).replace(/[&<>'"]/g, character => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"}[character]));
     }
 
-    document.getElementById("newPurchaseButton").addEventListener("click", showForm);
+    document.getElementById("newPurchaseButton").addEventListener("click", () => showForm());
     document.getElementById("backButton").addEventListener("click", showHistory);
     document.getElementById("cancelButton").addEventListener("click", showHistory);
     searchInput.addEventListener("input", () => {
@@ -337,19 +358,28 @@
     });
     document.getElementById("purchaseForm").addEventListener("submit", async event => {
         event.preventDefault();
-        const purchase = { id: `EX-${Date.now().toString().slice(-6)}`, purchaser: document.getElementById("purchaser").value.trim(), itemName: document.getElementById("itemName").value.trim(), agent: document.getElementById("agent").value.trim(), catNo: document.getElementById("catNo").value.trim(), brand: document.getElementById("brand").value.trim(), notes: document.getElementById("notes").value.trim(), price: document.getElementById("price").value, orderDate: document.getElementById("orderDate").value, quotation: "", delivery: "", invoice: "" };
+        const isEditing = Boolean(editingId);
+        const purchase = { purchaser: document.getElementById("purchaser").value.trim(), itemName: document.getElementById("itemName").value.trim(), agent: document.getElementById("agent").value.trim(), catNo: document.getElementById("catNo").value.trim(), brand: document.getElementById("brand").value.trim(), notes: document.getElementById("notes").value.trim(), price: document.getElementById("price").value, orderDate: document.getElementById("orderDate").value };
         const status = document.getElementById("status");
         const submitButton = event.currentTarget.querySelector('button[type="submit"]');
         try {
             submitButton.disabled = true;
             status.className = "status";
-            status.textContent = "正在建立採購紀錄…";
-            const result = await callApi({ action: "createPurchase", purchase });
-            purchases = sortPurchasesByOrderDate([
-                result.purchase,
-                ...purchases
-            ]);
-            currentPage = 1;
+            if (isEditing) {
+                status.textContent = "正在儲存修改…";
+                const result = await callApi({ action: "updatePurchase", purchase: { ...purchase, id: editingId } });
+                purchases = sortPurchasesByOrderDate(
+                    purchases.map(item => item.id === result.purchase.id ? result.purchase : item)
+                );
+            } else {
+                status.textContent = "正在建立採購紀錄…";
+                const result = await callApi({ action: "createPurchase", purchase });
+                purchases = sortPurchasesByOrderDate([
+                    result.purchase,
+                    ...purchases
+                ]);
+                currentPage = 1;
+            }
             document.getElementById("purchaseForm").reset();
             showHistory();
         } catch (error) {
