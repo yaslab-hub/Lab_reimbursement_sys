@@ -50,6 +50,9 @@
         .attachment-cell { display: flex; align-items: center; gap: 7px; min-width: 330px; }
         .edit-button { display: inline-block; margin: 6px 0 0 8px; padding: 2px 9px; color: var(--green); background: transparent; border: 1px solid #aac9bb; border-radius: 3px; font: 700 11px "Trebuchet MS", sans-serif; }
         .edit-button:hover { background: var(--mint); }
+        .delete-button { display: inline-block; margin: 6px 0 0 6px; padding: 2px 9px; color: #b42318; background: transparent; border: 1px solid #efc4bf; border-radius: 3px; font: 700 11px "Trebuchet MS", sans-serif; }
+        .delete-button:hover { background: #fdecea; }
+        .delete-button:disabled { cursor: wait; opacity: .5; }
         .id { color: var(--muted); font: 12px "Trebuchet MS", sans-serif; }
         .meta { display: flex; flex-wrap: wrap; gap: 16px; color: #53655f; font: 13px "Trebuchet MS", sans-serif; }
         .meta b { color: var(--ink); }
@@ -293,13 +296,14 @@
             const index = purchases.indexOf(purchase);
             const needsQuotation = Number(purchase.price) > 10000;
             const complete = purchase.delivery && purchase.invoice && (!needsQuotation || purchase.quotation);
-            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span><button class="edit-button" type="button" data-edit-id="${escapeHtml(purchase.id)}">編輯</button></td><td class="purchaser-cell">${escapeHtml(purchase.purchaser)}</td><td class="order-date-cell">${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? renderAttachment(purchase, "quotation", "Quote") : ""}${renderAttachment(purchase, "delivery", "Delivery note")}${renderAttachment(purchase, "invoice", "Invoice")}</div></td><td class="notes-cell">${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td></tr>`;
+            return `<tr><td class="item-cell"><strong>${escapeHtml(purchase.itemName)}</strong><span class="subtle">${escapeHtml(purchase.id)}</span><button class="edit-button" type="button" data-edit-id="${escapeHtml(purchase.id)}">編輯</button><button class="delete-button" type="button" data-delete-id="${escapeHtml(purchase.id)}">刪除</button></td><td class="purchaser-cell">${escapeHtml(purchase.purchaser)}</td><td class="order-date-cell">${escapeHtml(purchase.orderDate)}</td><td class="amount ${Number(purchase.price) > 10000 ? "high" : ""}">NT$ ${Number(purchase.price).toLocaleString()}</td><td>${purchase.brand ? escapeHtml(purchase.brand) : "－"}</td><td>${purchase.agent ? escapeHtml(purchase.agent) : "－"}</td><td class="cat-no">${purchase.catNo ? escapeHtml(purchase.catNo) : "－"}</td><td><div class="attachment-cell">${needsQuotation ? renderAttachment(purchase, "quotation", "Quote") : ""}${renderAttachment(purchase, "delivery", "Delivery note")}${renderAttachment(purchase, "invoice", "Invoice")}</div></td><td class="notes-cell">${purchase.notes ? escapeHtml(purchase.notes) : "－"}</td></tr>`;
         }).join("")}</tbody></table></div>`;
         purchaseList.querySelectorAll("input[type=file]").forEach(input => input.addEventListener("change", handleAttachment));
         purchaseList.querySelectorAll("button[data-edit-id]").forEach(button => button.addEventListener("click", () => {
             const target = purchases.find(item => item.id === button.dataset.editId);
             if (target) showForm(target);
         }));
+        purchaseList.querySelectorAll("button[data-delete-id]").forEach(button => button.addEventListener("click", () => handleDelete(button)));
         renderPagination(totalPages);
     }
 
@@ -342,6 +346,24 @@
                 control.removeAttribute("aria-busy");
             }
             input.value = "";
+        }
+    }
+
+    async function handleDelete(button) {
+        const target = purchases.find(item => item.id === button.dataset.deleteId);
+        if (!target) return;
+        const confirmed = confirm(`確定要刪除這筆採購紀錄嗎？\n\n品項：${target.itemName}\n編號：${target.id}\n\n已上傳的附件也會一併移到 Google Drive 垃圾桶。`);
+        if (!confirmed) return;
+        try {
+            button.disabled = true;
+            button.textContent = "刪除中…";
+            await callApi({ action: "deletePurchase", purchaseId: target.id });
+            purchases = purchases.filter(item => item.id !== target.id);
+            renderPurchases();
+        } catch (error) {
+            alert(error.message);
+            button.disabled = false;
+            button.textContent = "刪除";
         }
     }
 
