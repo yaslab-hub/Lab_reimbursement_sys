@@ -403,8 +403,8 @@ function validatePurchase(purchase) {
     throw new Error("品項名稱不可超過 200 個字元");
   }
 
-  if (cleanText(purchase.notes).length > 2000) {
-    throw new Error("備註不可超過 2000 個字元");
+  if (cleanText(purchase.notes).length > 100) {
+    throw new Error("備註不可超過 100 個字元");
   }
 }
 
