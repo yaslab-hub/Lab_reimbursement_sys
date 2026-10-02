@@ -264,7 +264,9 @@
     }
 
     function renderAttachment(purchase, type, label) {
-        const fileUrl = purchase[type];
+        const rawUrl = purchase[type];
+        const oldMatch = String(rawUrl || "").match(/drive\.google\.com\/uc\?.*[?&]?id=([\w-]+)/);
+        const fileUrl = oldMatch ? `https://drive.google.com/file/d/${oldMatch[1]}/view` : rawUrl;
         const escapedId = escapeHtml(purchase.id);
         const loadingMarkup = `<span class="attachment-loading"><span class="attachment-spinner" aria-hidden="true"></span><span>Uploading…</span></span>`;
         const replacementLoadingMarkup = `<span class="attachment-loading" aria-label="Uploading"><span class="attachment-spinner" aria-hidden="true"></span></span>`;

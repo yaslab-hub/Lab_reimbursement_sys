@@ -1,8 +1,8 @@
 const CONFIG = {
   spreadsheetId: "1C9QcI8DRm54Iw173e3IsoSv2xePyD8zzbg8pjCmeyqw",
-  quotationFolderId: "請填入估價單資料夾 ID",
-  deliveryFolderId: "請填入到貨單資料夾 ID",
-  invoiceFolderId: "請填入發票資料夾 ID",
+  quotationFolderId: "1NQDILXASC42IMXc6PxIYU3Ev4nQHz86_",
+  deliveryFolderId: "1tzXNvBSxAnl-i2Q4RjB4R-7ldNkjCHLv",
+  invoiceFolderId: "13pICs1F3yEXh2RarPgygCRcEcMCzYm5R",
   sheetName: "Purchases",
   maxFileSize: 10 * 1024 * 1024,
   quotationLimit: 10000
@@ -331,8 +331,8 @@ function uploadAttachment(request) {
     DriveApp.Access.ANYONE_WITH_LINK,
     DriveApp.Permission.VIEW
   );
-  const fileUrl = "https://drive.google.com/uc?export=view&id=" +
-    encodeURIComponent(file.getId());
+  const fileUrl = "https://drive.google.com/file/d/" +
+    encodeURIComponent(file.getId()) + "/view";
 
   const rowNumber = findPurchaseRowNumber(purchaseId);
   const columnNumber = getHeaderColumnNumber(attachmentType);
