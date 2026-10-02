@@ -147,7 +147,7 @@
                     <div class="field"><label for="catNo">貨號 Cat Number</label><input id="catNo" required type="text" placeholder="Ex. CLS430167"></div>
                     <div class="field"><label for="brand">廠牌 Brand</label><input id="brand" required type="text" placeholder="Ex. Corning"></div>
                     <div class="field"><label for="price">總金額（NTD）</label><input id="price" required min="0" type="number" placeholder="0"></div>
-                    <div class="field full"><label for="notes">備註 Notes (Optional)</label><textarea id="notes" rows="3" maxlength="100" placeholder="Ex. Additional specifications, usage, or other procurement information"></textarea></div>
+                    <div class="field full"><label for="notes">備註 Notes (Optional)</label><textarea id="notes" rows="3" placeholder="Ex. Additional specifications, usage, or other procurement information"></textarea></div>
                 </div>
                 <div class="form-actions"><button class="secondary danger" id="deleteButton" type="button" hidden>Delete</button><button class="secondary" id="cancelButton" type="button">Cancel</button><button class="primary" id="submitButton" type="submit">Create</button></div>
                 <div class="status" id="status" aria-live="polite"></div>
@@ -398,6 +398,11 @@
         const purchase = { purchaser: document.getElementById("purchaser").value.trim(), itemName: document.getElementById("itemName").value.trim(), agent: document.getElementById("agent").value.trim(), catNo: document.getElementById("catNo").value.trim(), brand: document.getElementById("brand").value.trim(), notes: document.getElementById("notes").value.trim(), price: document.getElementById("price").value, orderDate: document.getElementById("orderDate").value };
         const status = document.getElementById("status");
         const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+        if (purchase.notes.length > 100) {
+            status.className = "status error";
+            status.textContent = `備註字數超過上限（${purchase.notes.length} / 100 字），請縮短後再儲存`;
+            return;
+        }
         try {
             submitButton.disabled = true;
             status.className = "status";
